@@ -7,6 +7,7 @@ import com.yupi.usercenter.common.ResultUtils;
 import com.yupi.usercenter.constant.UserConstant;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
+import com.yupi.usercenter.model.domain.request.UserCreateRequest;
 import com.yupi.usercenter.model.domain.request.UserLoginRequest;
 import com.yupi.usercenter.model.domain.request.UserRegisterRequest;
 import com.yupi.usercenter.service.UserService;
@@ -31,6 +32,7 @@ import static com.yupi.usercenter.constant.UserConstant.USER_LOGIN_STATE;
  **/
 @RestController
 @RequestMapping("/user")
+//@CrossOrigin(origins = {"http://43.137.0.99/"}, allowCredentials = "true")
 public class UserController {
 
     @Resource
@@ -112,8 +114,57 @@ public class UserController {
         return ResultUtils.success(resultList);
     }
 
-    @PostMapping("/delete")
-    public BaseResponse<Boolean> deleteUser(@RequestBody long id, HttpServletRequest request) {
+    @PostMapping("create")
+    public BaseResponse<Long> createUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
+        // 仅管理员可新建
+        if (!isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NOT_AUTH);
+        }
+
+        if (userCreateRequest == null) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR);
+        }
+        String userAccount = userCreateRequest.getUserAccount();
+        String userPassword = userCreateRequest.getUserPassword();
+        String planetCode = userCreateRequest.getPlanetCode();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, planetCode)) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR);
+        }
+
+        long result = userService.userCreateByAdmin(userCreateRequest);
+
+        return ResultUtils.success(result);
+    }
+
+    @PostMapping("/update")
+    public BaseResponse<Long> updateUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
+        // 仅管理员可编辑
+        if (!isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NOT_AUTH);
+        }
+
+        if (userCreateRequest == null) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR);
+        }
+        String userAccount = userCreateRequest.getUserAccount();
+        String userPassword = userCreateRequest.getUserPassword();
+        String planetCode = userCreateRequest.getPlanetCode();
+        Long userDTOId = userCreateRequest.getId();
+        if (StringUtils.isAnyBlank(userAccount, userPassword, planetCode)) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR);
+        }
+        if (userDTOId == null) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "ID不存在");
+        }
+
+        long result = userService.userUpdateByAdmin(userCreateRequest);
+
+        return ResultUtils.success(result);
+    }
+
+
+    @GetMapping("/delete")
+    public BaseResponse<Boolean> deleteUser(Long id, HttpServletRequest request) {
         // 仅管理员可删除
         if (!isAdmin(request)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);

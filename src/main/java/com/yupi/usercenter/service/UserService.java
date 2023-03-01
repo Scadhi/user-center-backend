@@ -2,6 +2,7 @@ package com.yupi.usercenter.service;
 
 import com.yupi.usercenter.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.yupi.usercenter.model.domain.request.UserCreateRequest;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -44,4 +45,19 @@ public interface UserService extends IService<User> {
      * @return 标识符
      */
     int userLogout(HttpServletRequest request);
+
+    /**
+     * 管理员进行用户创建
+     * @param userDTO 用户信息
+     * @return 标识符
+     */
+    long userCreateByAdmin(UserCreateRequest userDTO);
+
+    /**
+     * 管理员进行用户修改
+     * @param userDTO 用户信息
+     * @return 标识符
+     */
+    long userUpdateByAdmin(UserCreateRequest userDTO);
+
 }

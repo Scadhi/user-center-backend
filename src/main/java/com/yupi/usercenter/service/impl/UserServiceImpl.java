@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.usercenter.common.ErrorCode;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
+import com.yupi.usercenter.model.domain.request.UserCreateRequest;
 import com.yupi.usercenter.service.UserService;
 import com.yupi.usercenter.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -140,6 +141,131 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         request.getSession().removeAttribute(USER_LOGIN_STATE);
 
         return 1;
+    }
+
+    @Override
+    public long userCreateByAdmin(UserCreateRequest userDTO) {
+
+        String userAccount = userDTO.getUserAccount();
+        String userPassword = userDTO.getUserPassword();
+        String planetCode = userDTO.getPlanetCode();
+
+        // 1. 校验
+        if (StringUtils.isAnyBlank(userAccount, userPassword, planetCode)) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "账号为空");
+        }
+        if (userAccount.length() < 4) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "用户账号过短");
+        }
+        if (userPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "用户密码过短");
+        }
+        if (planetCode.length() > 5) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "星球编号过长");
+        }
+
+        // 账户不包含特殊字符
+        String validPattern = "^[a-zA-Z0-9_]+$";
+        Matcher matcher = Pattern.compile(validPattern).matcher(userAccount);
+        if (!matcher.find()) {
+            return -1;
+        }
+
+        // 账户不能重复
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userAccount", userAccount);
+        long count = userMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "账号重复");
+        }
+
+        // 星球编号不能重复
+        queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("planetCode", userAccount);
+        count = userMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "星球编号重复");
+        }
+
+        // 2. 加密
+        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+
+        // 3. 插入数据
+        User user = new User();
+        user.setUserAccount(userAccount);
+        user.setUserPassword(encryptPassword);
+        user.setPlanetCode(planetCode);
+        boolean saveResult = this.save(user);
+        if (!saveResult) {
+            return -1;
+        }
+
+        return user.getId();
+    }
+
+    @Override
+    public long userUpdateByAdmin(UserCreateRequest userDTO) {
+
+        String userAccount = userDTO.getUserAccount();
+        String userPassword = userDTO.getUserPassword();
+        String planetCode = userDTO.getPlanetCode();
+        Long userDTOId = userDTO.getId();
+
+        // 1. 校验
+        if (StringUtils.isAnyBlank(userAccount, userPassword, planetCode)) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "账号为空");
+        }
+        if (userAccount.length() < 4) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "用户账号过短");
+        }
+        if (userPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "用户密码过短");
+        }
+        if (planetCode.length() > 5) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "星球编号过长");
+        }
+        if (userDTOId == null) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "ID不存在");
+        }
+
+        // 账户不包含特殊字符
+        String validPattern = "^[a-zA-Z0-9_]+$";
+        Matcher matcher = Pattern.compile(validPattern).matcher(userAccount);
+        if (!matcher.find()) {
+            return -1;
+        }
+
+        // 账户不能重复
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userAccount", userAccount);
+        long count = userMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "账号重复");
+        }
+
+        // 星球编号不能重复
+        queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("planetCode", userAccount);
+        count = userMapper.selectCount(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PRAMS_ERROR, "星球编号重复");
+        }
+
+        // 2. 加密
+        String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+
+        // 3. 插入数据
+        User user = new User();
+        user.setId(userDTOId);
+        user.setUserAccount(userAccount);
+        user.setUserPassword(encryptPassword);
+        user.setPlanetCode(planetCode);
+        boolean updateById = this.updateById(user);
+        if (!updateById) {
+            return -1;
+        }
+
+        return user.getId();
     }
 
     @Override
