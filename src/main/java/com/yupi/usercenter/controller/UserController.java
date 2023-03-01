@@ -11,6 +11,7 @@ import com.yupi.usercenter.model.domain.request.UserCreateRequest;
 import com.yupi.usercenter.model.domain.request.UserLoginRequest;
 import com.yupi.usercenter.model.domain.request.UserRegisterRequest;
 import com.yupi.usercenter.service.UserService;
+import com.yupi.usercenter.utils.UserHolder;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -84,12 +85,15 @@ public class UserController {
     }
 
     @GetMapping("/current")
-    public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User currentUser = (User) userObj;
-        if (currentUser == null) {
-            throw new BusinessException(ErrorCode.NOT_LOGIN);
-        }
+    public BaseResponse<User> getCurrentUser() {
+        //Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        //User currentUser = (User) userObj;
+        //if (currentUser == null) {
+        //    throw new BusinessException(ErrorCode.NOT_LOGIN);
+        //}
+
+        // 从ThreadLocal中获取登录的用户
+        User currentUser = UserHolder.getUser();
 
         Long userId = currentUser.getId();
         // todo 校验用户是否合法
@@ -99,9 +103,12 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest request) {
+    public BaseResponse<List<User>> searchUsers(String username) {
+        // 从ThreadLocal中获取登录的用户
+        User currentUser = UserHolder.getUser();
+
         // 仅管理员可查询
-        if (!isAdmin(request)) {
+        if (!isAdmin(currentUser)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
 
@@ -115,9 +122,12 @@ public class UserController {
     }
 
     @PostMapping("create")
-    public BaseResponse<Long> createUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
+    public BaseResponse<Long> createUser(@RequestBody UserCreateRequest userCreateRequest) {
+        // 从ThreadLocal中获取登录的用户
+        User currentUser = UserHolder.getUser();
+
         // 仅管理员可新建
-        if (!isAdmin(request)) {
+        if (!isAdmin(currentUser)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
 
@@ -137,9 +147,12 @@ public class UserController {
     }
 
     @PostMapping("/update")
-    public BaseResponse<Long> updateUser(@RequestBody UserCreateRequest userCreateRequest, HttpServletRequest request) {
+    public BaseResponse<Long> updateUser(@RequestBody UserCreateRequest userCreateRequest) {
+        // 从ThreadLocal中获取登录的用户
+        User currentUser = UserHolder.getUser();
+
         // 仅管理员可编辑
-        if (!isAdmin(request)) {
+        if (!isAdmin(currentUser)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
 
@@ -164,9 +177,12 @@ public class UserController {
 
 
     @GetMapping("/delete")
-    public BaseResponse<Boolean> deleteUser(Long id, HttpServletRequest request) {
+    public BaseResponse<Boolean> deleteUser(Long id) {
+        // 从ThreadLocal中获取登录的用户
+        User currentUser = UserHolder.getUser();
+
         // 仅管理员可删除
-        if (!isAdmin(request)) {
+        if (!isAdmin(currentUser)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
 
@@ -180,13 +196,13 @@ public class UserController {
 
     /**
      * 是否为管理员
-     * @param request 用户角色
+     * @param currentUser 用户角色
      * @return 是否为管理员
      */
-    private boolean isAdmin(HttpServletRequest request) {
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User user = (User) userObj;
-        return user != null && user.getUserRole() == ADMIN_ROLE;
+    private boolean isAdmin(User currentUser) {
+        //Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        //User user = (User) userObj;
+        return currentUser != null && currentUser.getUserRole() == ADMIN_ROLE;
     }
 
 }
