@@ -1,16 +1,24 @@
 package com.yupi.usercenter.utils;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.yupi.usercenter.common.ErrorCode;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import static com.yupi.usercenter.constant.UserConstant.USER_LOGIN_STATE;
+import static com.yupi.usercenter.utils.RedisConstants.LOGIN_USER_KEY;
+import static com.yupi.usercenter.utils.RedisConstants.LOGIN_USER_TTL;
 
 /***
  * @title LoginInterceptor
@@ -21,28 +29,17 @@ import static com.yupi.usercenter.constant.UserConstant.USER_LOGIN_STATE;
  **/
 @Slf4j
 public class LoginInterceptor implements HandlerInterceptor {
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        //1. 获取session
-        HttpSession session = request.getSession();
-        //2. 获取session中的用户
-        Object user = session.getAttribute(USER_LOGIN_STATE);
-        //3. 判断用户是否存在
-        if (user == null) {
-            //4. 不存在，拦截
-            log.info("user login failed, userAccount cannont match userPassword");
+
+        // 1.判断是否需要拦截（ThreadLocal中是否有用户）
+        if (UserHolder.getUser() == null) {
+            // 没有，需要拦截
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
-        //5. 存在，保存用户信息到TheadLocal
-        UserHolder.saveUser((User) user);
-
-        //6. 放行
+        // 有用户，则放行
         return true;
     }
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-       //移除用户
-        UserHolder.removeUser();
-    }
 }

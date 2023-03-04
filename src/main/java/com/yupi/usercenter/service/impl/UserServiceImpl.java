@@ -1,24 +1,35 @@
 package com.yupi.usercenter.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.lang.UUID;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.usercenter.common.ErrorCode;
 import com.yupi.usercenter.exception.BusinessException;
 import com.yupi.usercenter.model.domain.User;
 import com.yupi.usercenter.model.domain.request.UserCreateRequest;
+import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.service.UserService;
 import com.yupi.usercenter.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.yupi.usercenter.constant.UserConstant.USER_LOGIN_STATE;
+import static com.yupi.usercenter.utils.RedisConstants.LOGIN_USER_KEY;
+import static com.yupi.usercenter.utils.RedisConstants.LOGIN_USER_TTL;
 
 /**
 * @author Skadhi
@@ -31,6 +42,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 盐值
@@ -95,7 +109,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public UserDTO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             return null;
@@ -127,10 +141,27 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 3. 用户脱敏
-        User safetyUser = getSafetyUser(user);
+        UserDTO safetyUser = getSafetyUser(user);
 
         // 4. 登录用户的登录态
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
+        //request.getSession().setAttribute(USER_LOGIN_STATE, user);
+
+        // 4. 保存用户信息到redis中
+        // 4.1 随机生成token，作为登录令牌
+        String token = UUID.randomUUID().toString(true);
+        String tokenKey = LOGIN_USER_KEY + token;
+        safetyUser.setToken(token);
+        // 4.2 将User对象转化为Hash存储
+        User user2 = BeanUtil.copyProperties(user, User.class);
+        Map<String, Object> userMap = BeanUtil.beanToMap(user2, new HashMap<>(),
+                CopyOptions.create()
+                        .setIgnoreNullValue(true)
+                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
+        // 4.3 存储
+        stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
+        // 4.4 设置token有效期
+        stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
+        // 5. 返回
 
         return safetyUser;
     }
@@ -269,12 +300,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User getSafetyUser(User originUser) {
+    public UserDTO getSafetyUser(User originUser) {
         if (originUser == null) {
             return null;
         }
 
-        User safetyUser = new User();
+        UserDTO safetyUser = new UserDTO();
         safetyUser.setId(originUser.getId());
         safetyUser.setUsername(originUser.getUsername());
         safetyUser.setUserAccount(originUser.getUserAccount());

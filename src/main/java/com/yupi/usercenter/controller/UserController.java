@@ -10,6 +10,7 @@ import com.yupi.usercenter.model.domain.User;
 import com.yupi.usercenter.model.domain.request.UserCreateRequest;
 import com.yupi.usercenter.model.domain.request.UserLoginRequest;
 import com.yupi.usercenter.model.domain.request.UserRegisterRequest;
+import com.yupi.usercenter.model.dto.UserDTO;
 import com.yupi.usercenter.service.UserService;
 import com.yupi.usercenter.utils.UserHolder;
 import org.apache.commons.lang3.StringUtils;
@@ -58,7 +59,7 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
+    public BaseResponse<UserDTO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
             throw new BusinessException(ErrorCode.PRAMS_ERROR);
         }
@@ -68,9 +69,9 @@ public class UserController {
             throw new BusinessException(ErrorCode.PRAMS_ERROR);
         }
 
-        User user = userService.userLogin(userAccount, userPassword, request);
+        UserDTO userDTO = userService.userLogin(userAccount, userPassword, request);
 
-        return ResultUtils.success(user);
+        return ResultUtils.success(userDTO);
     }
 
     @PostMapping("/logout")
@@ -85,7 +86,7 @@ public class UserController {
     }
 
     @GetMapping("/current")
-    public BaseResponse<User> getCurrentUser() {
+    public BaseResponse<UserDTO> getCurrentUser() {
         //Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         //User currentUser = (User) userObj;
         //if (currentUser == null) {
@@ -98,12 +99,12 @@ public class UserController {
         Long userId = currentUser.getId();
         // todo 校验用户是否合法
         User user = userService.getById(userId);
-        User safetyUser = userService.getSafetyUser(user);
+        UserDTO safetyUser = userService.getSafetyUser(user);
         return ResultUtils.success(safetyUser);
     }
 
     @GetMapping("/search")
-    public BaseResponse<List<User>> searchUsers(String username) {
+    public BaseResponse<List<UserDTO>> searchUsers(String username) {
         // 从ThreadLocal中获取登录的用户
         User currentUser = UserHolder.getUser();
 
@@ -117,7 +118,7 @@ public class UserController {
             queryWrapper.like("username", username);
         }
         List<User> userList = userService.list(queryWrapper);
-        List<User> resultList = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
+        List<UserDTO> resultList = userList.stream().map(user -> userService.getSafetyUser(user)).collect(Collectors.toList());
         return ResultUtils.success(resultList);
     }
 

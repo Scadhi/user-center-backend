@@ -3,6 +3,7 @@ package com.yupi.usercenter.service;
 import com.yupi.usercenter.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.yupi.usercenter.model.domain.request.UserCreateRequest;
+import com.yupi.usercenter.model.dto.UserDTO;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -30,14 +31,14 @@ public interface UserService extends IService<User> {
      * @param userPassword 用户密码
      * @return 脱敏后的用户参数
      */
-    User userLogin(String userAccount, String userPassword, HttpServletRequest request);
+    UserDTO userLogin(String userAccount, String userPassword, HttpServletRequest request);
 
     /**
      * 用户脱敏
      * @param originUser 原用户
      * @return 脱敏用户
      */
-    User getSafetyUser(User originUser);
+    UserDTO getSafetyUser(User originUser);
 
     /**
      * 用户注销
